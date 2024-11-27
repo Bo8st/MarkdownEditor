@@ -1,10 +1,13 @@
 import dotenv from 'dotenv'
 import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
 dotenv.config();
 
 import { neon } from "@neondatabase/serverless"
+import e from 'express';
+import { error } from 'console';
 
-const { PGHOST, PGDATABASE, PGUSER, PGPASSWORD } = process.env;
+const { PGHOST, PGDATABASE, PGUSER, PGPASSWORD, JWT_SECRET } = process.env;
 const url: string = `postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}/${PGDATABASE}?sslmode=require`;
 
 const sql: any = neon(url);
@@ -48,14 +51,30 @@ const login = async (obj: {username?: string, email?: string}, password:string) 
     }
 }
 
+const generateToken = (id: number):string => {
+    if (JWT_SECRET) {
+        const token:string = jwt.sign({userId: id}, JWT_SECRET, {expiresIn: '1h'})
+        return token;
+    } else {
+        console.error("error with jwt secret token");
+        return '';
+    }
+}
+
+const verifyToken = (token: string) => {
+    if (JWT_SECRET) {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        console.log(decoded);
+    }
+}
+
 const viewAllUsers = async() : Promise<any> => {
     const result = await sql('SELECT * FROM users');
     return result;
 }
 
-
 // requestHandler().then((res) => {
 //     console.log(res)
 // })
 
-login({email:"test5@email.com"}, "test5password")
+verifyToken(generateToken(1))
