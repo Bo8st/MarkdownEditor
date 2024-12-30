@@ -22,11 +22,28 @@ const requestHandler = async (): Promise<any> => {
     }
 }
 
-const createUser = async (username:string, email:string, password:string) : Promise<any> => {
+const insertUser = async (username:string, email:string, password:string) : Promise<any> => {
     let saltRounds: number = 10;
     const encPassword: string = await bcrypt.hash(password, saltRounds);
     const result = await sql('INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id', [username, email, encPassword], {fullResults: true})
-    console.log(result.rows);
+    console.log(result.rows[0].id);
+}
+
+const insertNote = async (userId:number, name:string, content:string) : Promise<any> => {
+    try {
+        const result = await sql('INSERT INTO notes (name, content) VALUES ($1, $2) RETURNING id', [name, content]);
+        const noteId:number = result[0].id;
+        console.log(noteId)
+
+        await sql('INSERT INTO user_notes (user_id, note_id) VALUES ($1, $2)', [userId, noteId])
+    } catch (error:any) {
+        console.error(error);
+    }
+}
+
+
+const updateUser = async (id:number, obj: {username?: string, email?: string, password?:string}) : Promise<any> => {
+
 }
 
 const login = async (obj: {username?: string, email?: string}, password:string) : Promise<any> => {
@@ -77,4 +94,18 @@ const viewAllUsers = async() : Promise<any> => {
 //     console.log(res)
 // })
 
-verifyToken(generateToken(1))
+insertNote(3,"first note", "this is my first note");
+
+class DatabaseSystem {
+
+    createUser = insertUser;
+    loginUser = login;
+
+}
+
+class tokenHandler {
+    createToken = generateToken;
+    decryptToken = verifyToken;
+}
+
+// const databaseSystem = new DatabaseSystem();
