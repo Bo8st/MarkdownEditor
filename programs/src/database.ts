@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 dotenv.config();
 
-import { neon } from "@neondatabase/serverless"
+import { neon, NeonQueryFunction } from "@neondatabase/serverless"
 import e from 'express';
 import { error } from 'console';
 
@@ -22,6 +22,7 @@ const requestHandler = async (): Promise<any> => {
     }
 }
 
+// database functions
 const insertUser = async (username:string, email:string, password:string) : Promise<any> => {
     let saltRounds: number = 10;
     const encPassword: string = await bcrypt.hash(password, saltRounds);
@@ -46,6 +47,9 @@ const updateUser = async (id:number, obj: {username?: string, email?: string, pa
 
 }
 
+
+// complex functions
+
 const login = async (obj: {username?: string, email?: string}, password:string) : Promise<any> => {
     let result: any;
     if (obj.username) {
@@ -67,6 +71,8 @@ const login = async (obj: {username?: string, email?: string}, password:string) 
         }
     }
 }
+
+// token functions
 
 const generateToken = (id: number):string => {
     if (JWT_SECRET) {
@@ -94,13 +100,55 @@ const viewAllUsers = async() : Promise<any> => {
 //     console.log(res)
 // })
 
-insertNote(3,"first note", "this is my first note");
+export class DatabaseSystem {
+    SQL: NeonQueryFunction<false, false>
 
-class DatabaseSystem {
+    constructor() {
+        const { PGHOST, PGDATABASE, PGUSER, PGPASSWORD, JWT_SECRET } = process.env;
+        const url: string = `postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}/${PGDATABASE}?sslmode=require`;
 
-    createUser = insertUser;
-    loginUser = login;
+        this.SQL = neon(url);
+    }
 
+    async insertUser(username: string, password:string, email:string) : Promise<any> {
+        let saltRounds: number = 10;
+        const hashPassword = await bcrypt.hash(password, saltRounds);
+
+        const result :any= await this.SQL('INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING ID', [username, email, password]);
+        console.log(result.at(0).id);
+    }
+
+    async insertNote(id: number, name: string, content: string) : Promise<any> {
+        const result = await sql('INSERT INTO notes (name, content) VALUES ($1, $2) RETURNING id', [name, content]);
+        const noteId:number = result[0].id;
+        console.log(noteId)
+
+        await sql('INSERT INTO user_notes (user_id, note_id) VALUES ($1, $2)', [id, noteId])
+    }
+
+    async get_user_by(params : {id?: number, name?: string, password?:string}) : Promise<any> {
+        let result: any;
+        if (params.id !== undefined) {
+            result = this.SQL('SELECT * FROM users WHERE id = $1', [params.id]);
+        } else if (params.name !== undefined) {
+            result = this.SQL('SELECT * FROM users WHERE id = $1', [params.id]);
+        } else if (params.name !== undefined) {
+            result = this.SQL('SELECT * FROM users WHERE id = $1', [params.id]);
+        } else {
+            throw error('params have undefined values or no values are given');
+        }
+
+        return result;
+    }
+
+    async get_notes_from_user(username: string) : Promise<any> {
+        if (username == '') {
+            throw error('username is empty')
+        } else {
+            const result: any = await this.SQL('SELECT id FROM users WHERE username = $1', [username]);
+            
+        }
+    }
 }
 
 class tokenHandler {
@@ -108,4 +156,7 @@ class tokenHandler {
     decryptToken = verifyToken;
 }
 
+
+const databaseSystem = new DatabaseSystem();
+databaseSystem.insertUser('test9', 'test9password', 'test9@email.com');
 // const databaseSystem = new DatabaseSystem();
