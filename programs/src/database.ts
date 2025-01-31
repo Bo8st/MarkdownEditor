@@ -106,7 +106,34 @@ export class DatabaseSystem {
         }
     }
 
-
+    login = async (obj: {username?: string, email?: string}, password:string) : Promise<any> => {
+        let result: any;
+        let given: Record<string, any> = {};
+        if (obj.username) {
+            result = await sql('SELECT id, password FROM users WHERE username = $1', [obj.username]);
+        } else if (obj.email) {
+            result = await sql('SELECT id, password FROM users WHERE email = $1', [obj.email]);
+        } else {
+            given.errMessage = "username and email missing"
+            return given;
+        }
+        
+        if (!result[0].password) {
+            console.error("no user of username/email has been found");
+            given.errMessage = "no user of username/email has been found"
+            return given;
+        } else {
+            let pswd: string = result[0].password;
+            if (await bcrypt.compare(password,pswd)) {
+                given.msg = 'user has loged in'
+                given.id = result[0].id;
+                return given;
+            } else {
+                given.errMessage = 'invalid password given'
+                return given;
+            }
+        }
+    }
 }
 
 export class TokenHandler {
@@ -134,6 +161,4 @@ export class TokenHandler {
     }   
 }
 
-const databaseSystem = new DatabaseSystem();
-databaseSystem.get_notes_from_user('test2')
 // const databaseSystem = new DatabaseSystem();
